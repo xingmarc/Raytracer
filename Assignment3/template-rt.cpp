@@ -180,6 +180,15 @@ void saveFile()
 }
 
 
+
+//
+void testForDebug ()
+{
+    //This is the test for my debugging
+    //Outputing the parsing result
+}
+
+
 // -------------------------------------------------------------------
 // Main
 
