@@ -347,7 +347,6 @@ bool rayIntersectWithSphere(sphere &sph, Ray r, float &t, bool eye)
                         vecForSphere.push_back(*s_iterator);
                     }
                 }
-
             }
             else
             {
@@ -381,7 +380,7 @@ bool rayIntersectWithSphere(sphere &sph, Ray r, float &t, bool eye)
         
         sph = vecForSphere[num];
         t = vecForT[num];
-        cout << t<<" ";
+        //cout << t<<" ";
         return  true;
         
         
@@ -440,9 +439,10 @@ vec4 reflection (Ray ray, float t, sphere sph, int depth)
     }
     else{
 
-    if (depth == 2)
+    if (depth == 3)
     {
-        return vec4(sph.r, sph.g, sph.b, 1.0);
+        cout <<"vec4:"<< vec4(sph.r, sph.g, sph.b, 1.0)<<endl;
+        return vec4(sph.r , sph.g , sph.b , 1.0);
         //return addIllumination(intersectedT, newRay, intersectedSphere);
     }
     else{
@@ -456,7 +456,7 @@ vec4 reflection (Ray ray, float t, sphere sph, int depth)
 
 
 //int count1 = 0;
-//Add Illumination for one light source:
+//Add Illumination for one light source
 vec4 addIllumination(float t, Ray ray, sphere sph,light li)
                      //vec3 S, vec3 c, vec3 S_prime, vec3 c_prime,
                      //sphere sph, light li)
@@ -502,7 +502,11 @@ vec4 addIllumination(float t, Ray ray, sphere sph,light li)
         
         float cosTheta = dot(normal,L);
         float cosPhi_n = pow(dot(R, v),sph.n);
-        
+    
+    
+   // cout << " RV : "<< dot(R, v) << endl;
+    
+    
         if (cosTheta > 0) {//if we can't see the light
             //color.x += ambient.Ir * sph.Ka;
             //color.y += ambient.Ig * sph.Ka;
@@ -522,10 +526,12 @@ vec4 addIllumination(float t, Ray ray, sphere sph,light li)
         }
         
     //}
+    
     vec4 tempColor = reflection(ray, t, sph, 0);
-    color.x += tempColor.x;
-    color.y += tempColor.y;
-    color.z += tempColor.z;
+    //cout << tempColor <<endl;
+    color.x += tempColor.x * sph.Kr ;
+    color.y += tempColor.y * sph.Kr ;
+    color.z += tempColor.z * sph.Kr ;
     
     return color;
 }
@@ -557,8 +563,8 @@ vec4 trace(const Ray& ray)
      vec4 temp_color = vec4(0,0,0,1);
     
     if (rayIntersectWithSphere(sph, ray, t,true)) {
-        cout << t << endl;
-        cout << sph.name << endl;
+        //cout << t << endl;
+        //cout << sph.name << endl;
         
         vector<light> ::iterator itl;
         for (itl = lights.begin(); itl != lights.end(); itl++)
@@ -567,9 +573,11 @@ vec4 trace(const Ray& ray)
             
                 temp_color += addIllumination(t, ray, sph ,*itl);
             }
+            //
             
         }
         
+        //temp_color += reflection(ray, t, sph, 0);
         //cout << "tmepcolor: "<<temp_color.x <<" "<<temp_color.y<<" "<<temp_color.z<<endl;
         color.x +=  temp_color.x + ambient.Ir * sph.Ka * sph.r;
         color.y +=  temp_color.y + ambient.Ig * sph.Ka * sph.g;
@@ -580,7 +588,7 @@ vec4 trace(const Ray& ray)
         color.y += sph.g;
         color.z += sph.b;
         */
-        cout << "color: "<<color.x <<" "<<color.y<<" "<<color.z<<endl;
+        //cout << "color: "<<color.x <<" "<<color.y<<" "<<color.z<<endl;
     
     }
     else
@@ -741,13 +749,7 @@ int main(int argc, char* argv[])
     
     
     //
-    //testForDebug();
-    //
-    
-    //cout << dot(vec3(1,1,1),vec3(1,1,1))<<endl;
-    //cout <<length(vec3(1,1,0))<<endl;
-    
-    //REMEMBER TO UNCOMMENT THESE TWO LINES:
+    testForDebug();
     render();
     saveFile();
     
