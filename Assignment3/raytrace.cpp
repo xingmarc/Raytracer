@@ -14,6 +14,8 @@ using namespace std;
 
 const float EPSILON = 0.0001;
 
+
+
 // -------------------------------------------------------------------
 //The data structures listed here:
 
@@ -74,6 +76,8 @@ string outputFileName;
 
 
 
+
+vec4 addIllumination(float t, Ray ray, sphere sph,light li);
 
 // -------------------------------------------------------------------
 // Input file parsing
@@ -335,7 +339,8 @@ bool rayIntersectWithSphere(sphere &sph, Ray r, float &t, bool eye)
         
         float tt_near,tt_far;
         // there is an intersection
-        if (calculateTheRaysphereIntersection(S_prime, c_prime, tt_near, tt_far)) {
+        if (calculateTheRaysphereIntersection(S_prime, c_prime, tt_near, tt_far))
+        {
             if (eye) {
                 if (tt_near >= 1) {
                     vecForT.push_back(tt_near);
@@ -350,8 +355,11 @@ bool rayIntersectWithSphere(sphere &sph, Ray r, float &t, bool eye)
             }
             else
             {
-                vecForT.push_back(tt_near);
-                vecForSphere.push_back(*s_iterator);
+                if (tt_near > 0.0001f) {
+                    vecForT.push_back(tt_near);
+                    vecForSphere.push_back(*s_iterator);
+                }
+                
             }
             
         }
@@ -434,16 +442,32 @@ vec4 reflection (Ray ray, float t, sphere sph, int depth)
     sphere intersectedSphere;
     float intersectedT;
     
-    if (!rayIntersectWithSphere(intersectedSphere, newRay, intersectedT,true)) {
+    //if the ray intersected with other spheres:
+    if (!rayIntersectWithSphere(intersectedSphere, newRay, intersectedT, false)) {
         return vec4 (0,0,0,1);
     }
     else{
 
-    if (depth == 3)
+    if (depth == 0)
     {
-        cout <<"vec4:"<< vec4(sph.r, sph.g, sph.b, 1.0)<<endl;
-        return vec4(sph.r , sph.g , sph.b , 1.0);
-        //return addIllumination(intersectedT, newRay, intersectedSphere);
+        
+        //cout << intersectedT <<"newRay :"<< newRay.origin <<" "<<newRay.dir<<endl;
+        //cout <<"vec4:"<< vec4(sph.r, sph.g, sph.b, 1.0)<<endl;
+        vec4 temp_color(0,0,0,1);
+        vector<light> ::iterator itl;
+        for (itl = lights.begin(); itl != lights.end(); itl++)
+        {
+            temp_color += addIllumination(intersectedT, newRay, intersectedSphere,*itl);
+        }
+        
+        
+        
+        return vec4(temp_color.x + ambient.Ir * intersectedSphere.Ka * intersectedSphere.r,
+                    temp_color.y + ambient.Ig * intersectedSphere.Ka * intersectedSphere.g,
+                    temp_color.z + ambient.Ib * intersectedSphere.Ka * intersectedSphere.b,
+                    1.0);
+        //return vec4(sph.r * sph.Ka, sph.g  * sph.Ka, sph.b * sph.Ka, 1.0);//*Ka????
+        
     }
     else{
         depth++;
@@ -512,26 +536,37 @@ vec4 addIllumination(float t, Ray ray, sphere sph,light li)
             //color.y += ambient.Ig * sph.Ka;
             //color.z += ambient.Ib * sph.Ka;
 
-        
+            if (dot(R,v) > 0) {
+                color.x += li.Ir * sph.Kd * cosTheta * sph.r + li.Ir * sph.Ks * cosPhi_n;
+                //ambient.Ir*sph.Ka;
+                color.y += li.Ig * sph.Kd * cosTheta * sph.g + li.Ig * sph.Ks * cosPhi_n ;
+                //ambient.Ig * sph.Ka;
+                color.z += li.Ib * sph.Kd * cosTheta * sph.b + li.Ib * sph.Ks * cosPhi_n;
+                //ambient.Ib * sph.Ka;
+
+                
+            }
+            else{
+                color.x += li.Ir * sph.Kd * cosTheta * sph.r ;
+                //ambient.Ir*sph.Ka;
+                color.y += li.Ig * sph.Kd * cosTheta * sph.g ;
+                //ambient.Ig * sph.Ka;
+                color.z += li.Ib * sph.Kd * cosTheta * sph.b ;
+                //ambient.Ib * sph.Ka;
+            }
             
-        color.x += li.Ir * sph.Kd * cosTheta * sph.r +
-            li.Ir * sph.Ks * cosPhi_n;
-                   //ambient.Ir*sph.Ka;
-        color.y += li.Ig * sph.Kd * cosTheta * sph.g +
-            li.Ig * sph.Ks * cosPhi_n ;
-                   //ambient.Ig * sph.Ka;
-        color.z += li.Ib * sph.Kd * cosTheta * sph.b +
-            li.Ib * sph.Ks * cosPhi_n;
-                   //ambient.Ib * sph.Ka;
         }
         
     //}
     
+    
+    /*
     vec4 tempColor = reflection(ray, t, sph, 0);
     //cout << tempColor <<endl;
     color.x += tempColor.x * sph.Kr ;
     color.y += tempColor.y * sph.Kr ;
-    color.z += tempColor.z * sph.Kr ;
+    color.z += tempColor.z * sph.Kr ;*/
+    
     
     return color;
 }
@@ -573,11 +608,11 @@ vec4 trace(const Ray& ray)
             
                 temp_color += addIllumination(t, ray, sph ,*itl);
             }
-            //
-            
         }
         
-        //temp_color += reflection(ray, t, sph, 0);
+        temp_color += reflection(ray, t, sph, 0) * sph.Kr;
+        
+        
         //cout << "tmepcolor: "<<temp_color.x <<" "<<temp_color.y<<" "<<temp_color.z<<endl;
         color.x +=  temp_color.x + ambient.Ir * sph.Ka * sph.r;
         color.y +=  temp_color.y + ambient.Ig * sph.Ka * sph.g;
@@ -605,14 +640,14 @@ vec4 getDir(int ix, int iy)
     // to pixel (ix, iy), normalized.
     vec4 dir;
     //
-    dir.x = g_left +(ix/float(g_width))*(g_right - g_left);
+    dir.x = g_left   + (ix/float(g_width))*(g_right - g_left);
     dir.y = g_bottom + (iy/float(g_height))*(g_top - g_bottom);
     dir.z = -1 * g_near;
     //dir = vec4(0.0f, 0.0f, -1.0f, 0.0f);
     dir.w = 0.0f;
     //cout <<dir.x <<" "<<dir.y <<" "<<dir.z <<" "<<endl;
     
-    dir = normalize(dir);
+    //dir = normalize(dir);
     
     return dir;
 }
@@ -686,10 +721,25 @@ void saveFile()
             }
     
     // TODO: change file name based on input file name.
-    char *cstr = new char [outputFileName.length() + 1];
-    strcpy(cstr, outputFileName.c_str());
+    
+    string toCertainDirectory;
+    string directory = "/Users/xing/Documents/cs174/Assignment3/Assignment3/testFilesResults/";
+    
+    toCertainDirectory = directory + outputFileName;
+    
+    //cout << toCertainDirectory << endl;
+    
+    
+    char *cstr = new char [toCertainDirectory.length() + 1];
+    strcpy(cstr, toCertainDirectory.c_str());
+    
+    //char *cstr = new char [outputFileName.length() + 1];
+    //strcpy(cstr, outputFileName.c_str());
     savePPM(g_width, g_height, cstr, buf);
+    
+    
     delete[] buf;
+    delete [] cstr;
 }
 
 
@@ -749,7 +799,7 @@ int main(int argc, char* argv[])
     
     
     //
-    testForDebug();
+    //testForDebug();
     render();
     saveFile();
     
